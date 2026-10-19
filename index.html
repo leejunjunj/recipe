@@ -42,7 +42,7 @@
   <!-- Firebase SDK (v10 Modular) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // Firebase Config (공용 데모 DB)
     const firebaseConfig = {
@@ -56,7 +56,7 @@
 
     const app = initializeApp(firebaseConfig);
     window.db = getFirestore(app);
-    window.firestoreTools = { collection, addDoc, onSnapshot, doc, updateDoc, query, orderBy, serverTimestamp };
+    window.firestoreTools = { collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp };
   </script>
 
   <style>
@@ -84,7 +84,7 @@
     <h1 class="text-xl md:text-2xl font-bold text-pink-600 tracking-wide flex items-center gap-1">
       Recipe Book🍳
     </h1>
-    <div class="w-8"></div> <!-- 좌우 균형용 유령 태그 -->
+    <div class="w-8"></div>
   </header>
 
   <!-- 슬라이드 메뉴 덮개 (Backdrop) -->
@@ -146,7 +146,6 @@
 
       <!-- 카테고리 필터 버튼 그룹 -->
       <div class="space-y-2 pt-1">
-        <!-- 1줄: 카테고리 1 -->
         <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs custom-scrollbar">
           <span class="font-bold text-gray-400 min-w-max mr-1">종류:</span>
           <button class="filter-btn cat1 font-medium px-2.5 py-1 rounded-lg border border-pink-200 bg-pink-500 text-white" data-group="1" data-value="전체">전체</button>
@@ -157,7 +156,6 @@
           <button class="filter-btn cat1 font-medium px-2.5 py-1 rounded-lg border border-pink-200 bg-white text-gray-600 hover:bg-pink-50" data-group="1" data-value="디저트">디저트</button>
         </div>
 
-        <!-- 2줄: 카테고리 2 -->
         <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs custom-scrollbar">
           <span class="font-bold text-gray-400 min-w-max mr-1">상황:</span>
           <button class="filter-btn cat2 font-medium px-2.5 py-1 rounded-lg border border-pink-200 bg-pink-500 text-white" data-group="2" data-value="전체">전체</button>
@@ -166,7 +164,6 @@
           <button class="filter-btn cat2 font-medium px-2.5 py-1 rounded-lg border border-pink-200 bg-white text-gray-600 hover:bg-pink-50" data-group="2" data-value="간식">간식</button>
         </div>
 
-        <!-- 3줄: 주재료 -->
         <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs custom-scrollbar">
           <span class="font-bold text-gray-400 min-w-max mr-1">재료:</span>
           <button class="filter-btn cat3 font-medium px-2.5 py-1 rounded-lg border border-pink-200 bg-pink-500 text-white" data-group="3" data-value="전체">전체</button>
@@ -183,7 +180,6 @@
 
     <!-- 레시피 목록 카드 리스트 -->
     <section id="recipeList" class="space-y-4">
-      <!-- Dynamic Recipe Cards Loading Here -->
       <div class="text-center py-12 text-gray-400">레시피를 불러오는 중입니다...</div>
     </section>
   </main>
@@ -220,28 +216,33 @@
           <h3 class="font-bold text-sm text-pink-600 mb-2">조리 순서</h3>
           <ol id="detailSteps" class="text-sm space-y-2 text-gray-700"></ol>
         </div>
+
+        <!-- 내 글일 때만 나타나는 수정/삭제 버튼 영역 -->
+        <div id="myRecipeActionArea" class="hidden pt-4 border-t border-pink-100 flex justify-end gap-2">
+          <button id="editRecipeBtn" class="px-4 py-2 bg-amber-400 text-white rounded-xl text-xs font-bold hover:bg-amber-500 transition">수정</button>
+          <button id="deleteRecipeBtn" class="px-4 py-2 bg-rose-400 text-white rounded-xl text-xs font-bold hover:bg-rose-500 transition">삭제</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- [모달 2] 레시피 작성 모달 -->
+  <!-- [모달 2] 레시피 작성 및 수정 모달 -->
   <div id="recipeFormModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-xl rounded-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
       <div class="p-4 border-b border-pink-100 flex items-center justify-between bg-pink-50/50">
-        <h2 class="font-bold text-lg text-pink-600">새 레시피 작성</h2>
+        <h2 id="formModalTitle" class="font-bold text-lg text-pink-600">새 레시피 작성</h2>
         <button id="closeFormBtn" class="text-gray-400 hover:text-gray-600">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
 
       <form id="recipeForm" class="p-5 overflow-y-auto space-y-4 text-sm custom-scrollbar flex-1">
-        <!-- 메뉴명 -->
+        <input type="hidden" id="editingRecipeId" value="">
         <div>
           <label class="block font-bold text-gray-700 mb-1">메뉴명 *</label>
           <input type="text" id="formTitle" required placeholder="예: 매콤 달콤 닭볶음탕" class="w-full px-3 py-2 border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400">
         </div>
 
-        <!-- 사진 업로드 -->
         <div>
           <label class="block font-bold text-gray-700 mb-1">사진 첨부</label>
           <input type="file" id="formPhoto" accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100">
@@ -250,7 +251,6 @@
           </div>
         </div>
 
-        <!-- 재료 입력 (단위/수량 포함) -->
         <div>
           <label class="block font-bold text-gray-700 mb-1">재료</label>
           <div id="ingredientsContainer" class="space-y-2">
@@ -265,7 +265,6 @@
           </button>
         </div>
 
-        <!-- 조리 과정 입력 -->
         <div>
           <label class="block font-bold text-gray-700 mb-1">레시피 조리 순서</label>
           <div id="stepsContainer" class="space-y-2">
@@ -279,7 +278,6 @@
           </button>
         </div>
 
-        <!-- AI 자동 분류 미리보기/수정 -->
         <div class="border-t border-pink-100 pt-3">
           <div class="flex items-center justify-between mb-2">
             <span class="font-bold text-xs text-pink-600 flex items-center gap-1">
@@ -289,7 +287,6 @@
               AI 자동 판별 실행
             </button>
           </div>
-          <p class="text-[11px] text-gray-400 mb-2">AI가 내용을 분석해 자동 선택하며, 직접 수정하실 수도 있습니다.</p>
           <div class="grid grid-cols-3 gap-2">
             <select id="aiCat1" class="border border-pink-200 rounded-lg p-1.5 text-xs bg-white">
               <option value="밥">밥</option><option value="면">면</option><option value="빵">빵</option><option value="음료">음료</option><option value="디저트">디저트</option>
@@ -303,14 +300,9 @@
           </div>
         </div>
 
-        <!-- 버튼 영역: 연두(저장), 빨강(취소) -->
         <div class="flex items-center justify-end gap-3 pt-4 border-t border-pink-100">
-          <button type="button" id="cancelFormBtn" class="px-5 py-2 bg-rose-400 text-white rounded-xl font-medium hover:bg-rose-500 transition text-xs shadow-sm">
-            취소
-          </button>
-          <button type="submit" class="px-5 py-2 bg-emerald-400 text-white rounded-xl font-medium hover:bg-emerald-500 transition text-xs shadow-sm">
-            저장
-          </button>
+          <button type="button" id="cancelFormBtn" class="px-5 py-2 bg-rose-400 text-white rounded-xl font-medium hover:bg-rose-500 transition text-xs shadow-sm">취소</button>
+          <button type="submit" class="px-5 py-2 bg-emerald-400 text-white rounded-xl font-medium hover:bg-emerald-500 transition text-xs shadow-sm">저장</button>
         </div>
       </form>
     </div>
@@ -320,12 +312,10 @@
   <div id="profileModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
       <h2 class="font-bold text-lg text-pink-600 border-b border-pink-100 pb-2">프로필 설정</h2>
-
       <div>
         <label class="block font-bold text-xs text-gray-700 mb-1">닉네임</label>
         <input type="text" id="profileNameInput" class="w-full px-3 py-2 border border-pink-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400">
       </div>
-
       <div>
         <label class="block font-bold text-xs text-gray-700 mb-1">기본 이모티콘 프로필 선택</label>
         <div class="flex gap-2 text-2xl justify-around bg-pink-50 p-2 rounded-xl border border-pink-100">
@@ -336,12 +326,10 @@
           <button class="emoji-opt p-1 hover:scale-125 transition" data-emoji="🍰">🍰</button>
         </div>
       </div>
-
       <div>
         <label class="block font-bold text-xs text-gray-700 mb-1">내 카메라/사진첩에서 선택</label>
         <input type="file" id="profileImageInput" accept="image/*" class="w-full text-xs text-gray-500">
       </div>
-
       <div class="flex justify-end gap-2 pt-2 border-t border-pink-100">
         <button id="closeProfileBtn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl text-xs font-bold">취소</button>
         <button id="saveProfileBtn" class="px-4 py-2 bg-pink-500 text-white rounded-xl text-xs font-bold hover:bg-pink-600">저장</button>
@@ -351,34 +339,27 @@
 
   <!-- JavaScript Logic -->
   <script>
-    // 🔐 인코딩 처리된 API 키
     const _0x4a1b = ["\x41\x51\x2e\x41\x62\x38\x52\x4e\x36\x4b\x33\x6e\x6b\x67\x6e\x59\x6a\x65\x32\x6d\x53\x70\x6b\x65\x6d\x44\x67\x6c\x53\x4d\x71\x33\x6a\x4d\x77\x64\x5a\x32\x2d\x64\x45\x4e\x31\x48\x47\x50\x78\x53\x5f\x44\x74\x6e\x67"];
     const getAiKey = () => _0x4a1b[0];
 
-    // 앱 사용자 세션 ID (사용자 구분용)
     let myUserId = localStorage.getItem('recipe_user_id');
     if (!myUserId) {
       myUserId = 'user_' + Math.random().toString(36).substring(2, 9);
       localStorage.setItem('recipe_user_id', myUserId);
     }
 
-    // 사용자 프로필
     let userProfile = JSON.parse(localStorage.getItem('recipe_user_profile')) || {
       name: '셰프' + myUserId.substring(5, 8),
       avatar: '🍳',
       type: 'emoji'
     };
 
-    // 로컬 스크랩(별표) ID 리스트
     let starredIds = JSON.parse(localStorage.getItem('recipe_starred_ids')) || [];
-
-    // 상태 관리
-    let currentTab = 'all'; // all, my, starred
+    let currentTab = 'all';
     let allRecipes = [];
     let selectedFilters = { 1: '전체', 2: '전체', 3: '전체' };
     let tempImageBase64 = '';
 
-    // DOM 요소를 안전하게 다루는 헬퍼
     document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
       initUserProfileUI();
@@ -387,7 +368,6 @@
       setupFormDynamicRows();
       setupProfileEvents();
 
-      // Firebase Firestore 구독 시작 (실시간 공유)
       const checkDbInterval = setInterval(() => {
         if (window.db && window.firestoreTools) {
           clearInterval(checkDbInterval);
@@ -396,7 +376,6 @@
       }, 200);
     });
 
-    // 프로필 UI 동기화
     function initUserProfileUI() {
       const nameEl = document.getElementById('sideProfileName');
       const avatarEl = document.getElementById('sideProfileAvatar');
@@ -410,7 +389,6 @@
       }
     }
 
-    // 슬라이드 메뉴 처리
     function setupMenuEvents() {
       const menu = document.getElementById('sideMenu');
       const backdrop = document.getElementById('menuBackdrop');
@@ -431,7 +409,6 @@
       closeBtn?.addEventListener('click', () => toggleMenu(false));
       backdrop?.addEventListener('click', () => toggleMenu(false));
 
-      // 네비게이션 버튼들
       document.getElementById('navAll')?.addEventListener('click', () => switchTab('all'));
       document.getElementById('navMy')?.addEventListener('click', () => switchTab('my'));
       document.getElementById('navStarred')?.addEventListener('click', () => switchTab('starred'));
@@ -457,7 +434,6 @@
       renderRecipes();
     }
 
-    // 필터 버튼 이벤트
     function setupFilterEvents() {
       document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -465,7 +441,6 @@
           const val = e.target.dataset.value;
           selectedFilters[group] = val;
 
-          // 해당 그룹 내의 버튼 스타일 업데이트
           document.querySelectorAll(`.filter-btn[data-group="${group}"]`).forEach(b => {
             b.classList.remove('bg-pink-500', 'text-white');
             b.classList.add('bg-white', 'text-gray-600');
@@ -477,11 +452,9 @@
         });
       });
 
-      // AI 검색 버튼
       document.getElementById('aiSearchBtn')?.addEventListener('click', performAiSearch);
     }
 
-    // 레시피 동적 행 추가 (재료, 순서)
     function setupFormDynamicRows() {
       const ingContainer = document.getElementById('ingredientsContainer');
       const addIngBtn = document.getElementById('addIngBtn');
@@ -512,7 +485,6 @@
         stepsContainer.appendChild(row);
       });
 
-      // 이미지 파일 프리뷰
       document.getElementById('formPhoto')?.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -527,17 +499,77 @@
         }
       });
 
-      // AI 분류 실행 버튼
       document.getElementById('aiClassifyBtn')?.addEventListener('click', classifyRecipeWithAI);
-
-      // 모달 닫기 / 저장 버튼
       document.getElementById('closeFormBtn')?.addEventListener('click', closeFormModal);
       document.getElementById('cancelFormBtn')?.addEventListener('click', closeFormModal);
       document.getElementById('recipeForm')?.addEventListener('submit', saveRecipe);
     }
 
-    function openFormModal() {
-      document.getElementById('recipeFormModal').classList.remove('hidden');
+    function openFormModal(editData = null) {
+      const modal = document.getElementById('recipeFormModal');
+      const titleEl = document.getElementById('formModalTitle');
+      
+      if (editData) {
+        titleEl.textContent = "레시피 수정";
+        document.getElementById('editingRecipeId').value = editData.id;
+        document.getElementById('formTitle').value = editData.title;
+        tempImageBase64 = editData.photo || '';
+        if (tempImageBase64) {
+          document.getElementById('photoPreview').src = tempImageBase64;
+          document.getElementById('photoPreviewContainer').classList.remove('hidden');
+        }
+
+        // 재료 세팅
+        const ingContainer = document.getElementById('ingredientsContainer');
+        ingContainer.innerHTML = '';
+        (editData.ingredients || [{name:'', amount:''}]).forEach((ing, idx) => {
+          const row = document.createElement('div');
+          row.className = 'ingredient-row flex gap-2 items-center';
+          row.innerHTML = `
+            <span class="text-gray-400 font-bold text-xs w-4">${idx+1}.</span>
+            <input type="text" value="${ing.name}" placeholder="재료명" class="ing-name flex-1 px-3 py-1.5 border border-pink-200 rounded-lg focus:outline-none text-xs">
+            <input type="text" value="${ing.amount}" placeholder="수량/단위" class="ing-amount w-32 px-3 py-1.5 border border-pink-200 rounded-lg focus:outline-none text-xs">
+          `;
+          ingContainer.appendChild(row);
+        });
+
+        // 조리 순서 세팅
+        const stepsContainer = document.getElementById('stepsContainer');
+        stepsContainer.innerHTML = '';
+        (editData.steps || ['']).forEach((step, idx) => {
+          const row = document.createElement('div');
+          row.className = 'step-row flex gap-2 items-start';
+          row.innerHTML = `
+            <span class="text-gray-400 font-bold text-xs pt-2 w-4">${idx+1}.</span>
+            <textarea placeholder="조리 순서를 입력하세요..." rows="1" class="step-text flex-1 px-3 py-1.5 border border-pink-200 rounded-lg focus:outline-none text-xs">${step}</textarea>
+          `;
+          stepsContainer.appendChild(row);
+        });
+
+        document.getElementById('aiCat1').value = editData.cat1 || '밥';
+        document.getElementById('aiCat2').value = editData.cat2 || '식사';
+        document.getElementById('aiCat3').value = editData.cat3 || '기타';
+      } else {
+        titleEl.textContent = "새 레시피 작성";
+        document.getElementById('editingRecipeId').value = '';
+        document.getElementById('recipeForm').reset();
+        tempImageBase64 = '';
+        document.getElementById('photoPreviewContainer').classList.add('hidden');
+        document.getElementById('ingredientsContainer').innerHTML = `
+          <div class="ingredient-row flex gap-2 items-center">
+            <span class="text-gray-400 font-bold text-xs w-4">1.</span>
+            <input type="text" placeholder="재료명 (예: 닭고기)" class="ing-name flex-1 px-3 py-1.5 border border-pink-200 rounded-lg focus:outline-none text-xs">
+            <input type="text" placeholder="수량/단위 (예: 500g, 1컵)" class="ing-amount w-32 px-3 py-1.5 border border-pink-200 rounded-lg focus:outline-none text-xs">
+          </div>
+        `;
+        document.getElementById('stepsContainer').innerHTML = `
+          <div class="step-row flex gap-2 items-start">
+            <span class="text-gray-400 font-bold text-xs pt-2 w-4">1.</span>
+            <textarea placeholder="조리 순서를 입력하세요..." rows="1" class="step-text flex-1 px-3 py-1.5 border border-pink-200 rounded-lg focus:outline-none text-xs"></textarea>
+          </div>
+        `;
+      }
+      modal.classList.remove('hidden');
     }
 
     function closeFormModal() {
@@ -547,20 +579,17 @@
       document.getElementById('photoPreviewContainer').classList.add('hidden');
     }
 
-    // Gemini AI 분류 함수
     async function classifyRecipeWithAI() {
       const title = document.getElementById('formTitle').value;
       if (!title) {
         alert('메뉴명을 먼저 입력해 주세요.');
         return;
       }
-
-      // 간단한 규칙 기반 AI 시뮬레이션 및 스마트 판별
       let cat1 = "밥", cat2 = "식사", cat3 = "기타";
       if (title.includes("빵") || title.includes("토스트") || title.includes("샌드위치")) { cat1 = "빵"; cat2 = "브런치"; }
       else if (title.includes("면") || title.includes("파스타") || title.includes("라면")) { cat1 = "면"; }
       else if (title.includes("커피") || title.includes("차") || title.includes("주스")) { cat1 = "음료"; cat2 = "간식"; }
-      else if (title.includes("케이크") || title.includes("쿠키") || title.includes("빵")) { cat1 = "디저트"; cat2 = "간식"; }
+      else if (title.includes("케이크") || title.includes("쿠키")) { cat1 = "디저트"; cat2 = "간식"; }
 
       if (title.includes("닭") || title.includes("치킨")) cat3 = "닭";
       else if (title.includes("소") || title.includes("불고기")) cat3 = "소";
@@ -570,24 +599,19 @@
       document.getElementById('aiCat1').value = cat1;
       document.getElementById('aiCat2').value = cat2;
       document.getElementById('aiCat3').value = cat3;
-      alert(`AI 자동 분류가 완료되었습니다:\n[${cat1} / ${cat2} / ${cat3}]`);
+      alert(`AI 자동 분류 완료:\n[${cat1} / ${cat2} / ${cat3}]`);
     }
 
-    // AI 오타 교정 검색
     async function performAiSearch() {
       const queryText = document.getElementById('searchInput').value.trim();
       if (!queryText) return;
-
-      // 오타 자동 교정 사전 예시
       let corrected = queryText
         .replace(/닭복음/g, "닭볶음")
         .replace(/파스타아/g, "파스타")
         .replace(/김치찌게/g, "김치찌개");
-
       renderRecipes(corrected);
     }
 
-    // Firestore 실시간 레시피 데이터 수신
     function subscribeRecipes() {
       const { collection, onSnapshot, query, orderBy } = window.firestoreTools;
       const q = query(collection(window.db, "recipes"), orderBy("createdAt", "desc"));
@@ -601,13 +625,13 @@
       });
     }
 
-    // 레시피 저장
     async function saveRecipe(e) {
       e.preventDefault();
       const title = document.getElementById('formTitle').value.trim();
       if (!title) return;
 
-      // 재료 파싱
+      const editingId = document.getElementById('editingRecipeId').value;
+
       const ingredients = [];
       document.querySelectorAll('.ingredient-row').forEach(row => {
         const name = row.querySelector('.ing-name')?.value.trim();
@@ -615,7 +639,6 @@
         if (name) ingredients.push({ name, amount: amount || '' });
       });
 
-      // 조리 순서 파싱
       const steps = [];
       document.querySelectorAll('.step-row').forEach(row => {
         const text = row.querySelector('.step-text')?.value.trim();
@@ -630,43 +653,47 @@
         cat1: document.getElementById('aiCat1').value,
         cat2: document.getElementById('aiCat2').value,
         cat3: document.getElementById('aiCat3').value,
-        authorId: myUserId,
-        authorName: userProfile.name,
-        authorAvatar: userProfile.avatar,
-        authorAvatarType: userProfile.type,
-        createdAt: window.firestoreTools.serverTimestamp()
+        updatedAt: window.firestoreTools.serverTimestamp()
       };
 
       try {
-        await window.firestoreTools.addDoc(window.firestoreTools.collection(window.db, "recipes"), recipeData);
-        closeFormModal();
-        alert('레시피가 등록되었습니다!');
+        if (editingId) {
+          // 수정 업데이트
+          await window.firestoreTools.updateDoc(window.firestoreTools.doc(window.db, "recipes", editingId), recipeData);
+          alert('레시피가 수정되었습니다!');
+        } else {
+          // 새 등록
+          recipeData.authorId = myUserId;
+          recipeData.authorName = userProfile.name;
+          recipeData.authorAvatar = userProfile.avatar;
+          recipeData.authorAvatarType = userProfile.type;
+          recipeData.createdAt = window.firestoreTools.serverTimestamp();
+          await window.firestoreTools.addDoc(window.firestoreTools.collection(window.db, "recipes"), recipeData);
+          alert('레시피가 등록되었습니다!');
+        }
+        closeFormModal(); // 저장이 끝나면 칸이 완전히 닫히고 초기화됨
       } catch (err) {
         console.error(err);
         alert('저장 중 오류가 발생했습니다.');
       }
     }
 
-    // 레시피 목록 렌더링
     function renderRecipes(searchKeyword = '') {
       const container = document.getElementById('recipeList');
       if (!container) return;
 
       let list = [...allRecipes];
 
-      // 탭 별 필터링
       if (currentTab === 'my') {
         list = list.filter(r => r.authorId === myUserId);
       } else if (currentTab === 'starred') {
         list = list.filter(r => starredIds.includes(r.id));
       }
 
-      // 카테고리 필터링
       if (selectedFilters[1] !== '전체') list = list.filter(r => r.cat1 === selectedFilters[1]);
       if (selectedFilters[2] !== '전체') list = list.filter(r => r.cat2 === selectedFilters[2]);
       if (selectedFilters[3] !== '전체') list = list.filter(r => r.cat3 === selectedFilters[3]);
 
-      // 검색어 필터링
       if (searchKeyword) {
         list = list.filter(r => r.title.includes(searchKeyword));
       }
@@ -684,7 +711,6 @@
 
         return `
           <div class="bg-white rounded-2xl p-4 shadow-sm border border-pink-100 flex flex-col gap-3 relative hover:shadow-md transition cursor-pointer" onclick="openRecipeDetail('${item.id}')">
-            <!-- 상단 작성자 정보 & 별표 -->
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <div class="w-7 h-7 rounded-full bg-pink-100 flex items-center justify-center text-xs overflow-hidden border border-pink-200">
@@ -697,7 +723,6 @@
               </button>
             </div>
 
-            <!-- 사진 및 메뉴 정보 -->
             <div class="flex gap-4 items-center">
               ${item.photo ? `<img src="${item.photo}" class="w-20 h-20 rounded-xl object-cover border border-pink-100">` : ''}
               <div class="flex-1">
@@ -716,7 +741,6 @@
       lucide.createIcons();
     }
 
-    // 별표 스크랩 토글
     window.toggleStar = function(id) {
       if (starredIds.includes(id)) {
         starredIds = starredIds.filter(i => i !== id);
@@ -727,7 +751,6 @@
       renderRecipes();
     };
 
-    // 레시피 상세 모달 열기
     window.openRecipeDetail = function(id) {
       const item = allRecipes.find(r => r.id === id);
       if (!item) return;
@@ -757,7 +780,6 @@
         <span class="text-xs px-2 py-1 bg-pink-100 text-pink-700 rounded-lg">${item.cat3}</span>
       `;
 
-      // 재료 출력
       const ingList = document.getElementById('detailIngredients');
       ingList.innerHTML = (item.ingredients || []).map(ing => `
         <li class="flex justify-between">
@@ -766,7 +788,6 @@
         </li>
       `).join('') || '<li>재료 정보가 없습니다.</li>';
 
-      // 순서 출력
       const stepsList = document.getElementById('detailSteps');
       stepsList.innerHTML = (item.steps || []).map((step, idx) => `
         <li class="flex gap-2">
@@ -775,12 +796,34 @@
         </li>
       `).join('') || '<li>조리 순서 정보가 없습니다.</li>';
 
-      modal.classList.remove('hidden');
+      // **내 글일 때만 수정/삭제 버튼 표시**
+      const actionArea = document.getElementById('myRecipeActionArea');
+      if (item.authorId === myUserId) {
+        actionArea.classList.remove('hidden');
+        document.getElementById('editRecipeBtn').onclick = () => {
+          modal.classList.add('hidden');
+          openFormModal(item);
+        };
+        document.getElementById('deleteRecipeBtn').onclick = async () => {
+          if (confirm('정말 이 레시피를 삭제하시겠습니까?')) {
+            try {
+              await window.firestoreTools.deleteDoc(window.firestoreTools.doc(window.db, "recipes", item.id));
+              modal.classList.add('hidden');
+              alert('레시피가 삭제되었습니다.');
+            } catch (err) {
+              console.error(err);
+              alert('삭제 중 오류가 발생했습니다.');
+            }
+          }
+        };
+      } else {
+        actionArea.classList.add('hidden');
+      }
 
+      modal.classList.remove('hidden');
       document.getElementById('closeDetailBtn').onclick = () => modal.classList.add('hidden');
     };
 
-    // 프로필 모달 관련 logic
     function setupProfileEvents() {
       const profileModal = document.getElementById('profileModal');
       const openBtn = document.getElementById('openProfileModalBtn');
@@ -800,7 +843,6 @@
 
       closeBtn?.addEventListener('click', () => profileModal.classList.add('hidden'));
 
-      // 이모티콘 선택
       document.querySelectorAll('.emoji-opt').forEach(btn => {
         btn.addEventListener('click', (e) => {
           selectedType = 'emoji';
@@ -809,7 +851,6 @@
         });
       });
 
-      // 카메라/사진 파일 선택
       document.getElementById('profileImageInput')?.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
