@@ -39,10 +39,10 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- Firebase SDK (v10 Modular) -->
+  <!-- Firebase SDK (v10 Modular) - 사용자 프로젝트 적용 완료 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, getDocs, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBpi03SnVoBUpK8Kcu_FDIhXg7vnjE5k0s",
@@ -53,11 +53,10 @@
       appId: "1:435320088851:web:f9747ffde346c2a1b0d2e6",
       measurementId: "G-2FD3XCCXGL"
     };
-    
 
     const app = initializeApp(firebaseConfig);
     window.db = getFirestore(app);
-    window.firestoreTools = { collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp };
+    window.firestoreTools = { collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, getDocs, where };
   </script>
 
   <style>
@@ -307,7 +306,7 @@
     <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
       <h2 class="font-bold text-lg text-pink-600 border-b border-pink-100 pb-2">프로필 설정</h2>
       <div>
-        <label class="block font-bold text-xs text-gray-700 mb-1">닉네임</label>
+        <label class="block font-bold text-xs text-gray-700 mb-1">닉네임 (중복 불가)</label>
         <input type="text" id="profileNameInput" class="w-full px-3 py-2 border border-pink-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400">
       </div>
       <div>
@@ -651,10 +650,24 @@
         updatedAt: window.firestoreTools.serverTimestamp()
       };
 
-      // 즉시 작성 창 닫기
-      closeFormModal();
-
       try {
+        // [닉네임 중복 방지 검사 로직 추가]
+        // 새로 작성하는 경우(editingId가 없을 때), 현재 프로필 닉네임이 다른 레시피에서 이미 사용 중인지 확인합니다.
+        if (!editingId) {
+          const q = window.firestoreTools.query(
+            window.firestoreTools.collection(window.db, "recipes"), 
+            window.firestoreTools.where("authorName", "==", userProfile.name)
+          );
+          const querySnapshot = await window.firestoreTools.getDocs(q);
+
+          if (!querySnapshot.empty) {
+            alert(`⚠️ 이미 사용 중인 닉네임(${userProfile.name})입니다! 프로필 설정에서 닉네임을 변경한 후 다시 시도해 주세요.`);
+            return; // 중복이 감지되면 저장 중단
+          }
+        }
+
+        closeFormModal();
+
         if (editingId) {
           await window.firestoreTools.updateDoc(window.firestoreTools.doc(window.db, "recipes", editingId), recipeData);
         } else {
@@ -667,6 +680,7 @@
         }
       } catch (err) {
         console.error(err);
+        alert("저장 중 오류가 발생했습니다.");
       }
     }
 
@@ -797,7 +811,6 @@
         };
         document.getElementById('deleteRecipeBtn').onclick = async () => {
           if (confirm('정말 이 레시피를 삭제하시겠습니까?')) {
-            // 즉시 상세보기 모달 닫기
             modal.classList.add('hidden');
             try {
               await window.firestoreTools.deleteDoc(window.firestoreTools.doc(window.db, "recipes", item.id));
