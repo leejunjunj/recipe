@@ -519,7 +519,6 @@
           document.getElementById('photoPreviewContainer').classList.remove('hidden');
         }
 
-        // 재료 세팅
         const ingContainer = document.getElementById('ingredientsContainer');
         ingContainer.innerHTML = '';
         (editData.ingredients || [{name:'', amount:''}]).forEach((ing, idx) => {
@@ -533,7 +532,6 @@
           ingContainer.appendChild(row);
         });
 
-        // 조리 순서 세팅
         const stepsContainer = document.getElementById('stepsContainer');
         stepsContainer.innerHTML = '';
         (editData.steps || ['']).forEach((step, idx) => {
@@ -658,11 +656,9 @@
 
       try {
         if (editingId) {
-          // 수정 업데이트
           await window.firestoreTools.updateDoc(window.firestoreTools.doc(window.db, "recipes", editingId), recipeData);
           alert('레시피가 수정되었습니다!');
         } else {
-          // 새 등록
           recipeData.authorId = myUserId;
           recipeData.authorName = userProfile.name;
           recipeData.authorAvatar = userProfile.avatar;
@@ -671,7 +667,10 @@
           await window.firestoreTools.addDoc(window.firestoreTools.collection(window.db, "recipes"), recipeData);
           alert('레시피가 등록되었습니다!');
         }
-        closeFormModal(); // 저장이 끝나면 칸이 완전히 닫히고 초기화됨
+        
+        // **저장이 완료되면 작성 창을 닫고 초기화**
+        closeFormModal();
+        
       } catch (err) {
         console.error(err);
         alert('저장 중 오류가 발생했습니다.');
@@ -796,7 +795,6 @@
         </li>
       `).join('') || '<li>조리 순서 정보가 없습니다.</li>';
 
-      // **내 글일 때만 수정/삭제 버튼 표시**
       const actionArea = document.getElementById('myRecipeActionArea');
       if (item.authorId === myUserId) {
         actionArea.classList.remove('hidden');
